@@ -8,6 +8,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -61,6 +62,35 @@ func NewMigo(cfg *Config, tracker *Tracker) (Migrator, error) {
 }
 
 func (r *Runner) Up(ctx context.Context, db *gorm.DB) error {
+
+	err := r.Tracker.InitTracker(ctx, db)
+	if err != nil {
+		return err
+	}
+
+	files := r.Tracker.GetMigrationFiles()
+
+	for _, file := range files {
+		queryText, err := r.Tracker.ExtractUpBlock(file)
+		if err != nil {
+			return err
+		}
+
+		if strings.TrimSpace(queryText) == "" {
+			log.Println("⚠️ Skipping empty or no-up-block:", file)
+			continue
+		}
+
+		if err := db.Exec(queryText).Error; err != nil {
+			log.Printf("❌ Failed to execute %s: %v\n", file, err)
+			continue
+		}
+
+		err = r.Tracker.AddMigrationInfo(ctx, db, file)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

@@ -3,7 +3,11 @@ package migo
 import (
 	"bufio"
 	"bytes"
+	"context"
+	"fmt"
 	"gorm.io/gorm"
+	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -13,10 +17,13 @@ import (
 
 type MigrationTracker interface {
 	GetLastBatch(db *gorm.DB) error
-	PrepareAppliedMigrations(db *gorm.DB) error
+	PrepareAppliedMigrations(ctx context.Context, db *gorm.DB) error
 	FilterNewMigrations() error
-	ExtractUpBlock(sql []byte) string
-	ExtractDownBlock(sql []byte) string
+	ExtractUpBlock(file string) (string, error)
+	ExtractDownBlock(file string) (string, error)
+	InitTracker(ctx context.Context, db *gorm.DB) error
+	GetMigrationFiles() []string
+	AddMigrationInfo(ctx context.Context, db *gorm.DB, file string) error
 }
 
 type AppliedMigration struct {
@@ -39,27 +46,28 @@ func NewTracker(config *Config) *Tracker {
 	}
 }
 
-func (t *Tracker) InitTracker(db *gorm.DB) {
+func (t *Tracker) InitTracker(ctx context.Context, db *gorm.DB) error {
 	err := t.GetLastBatch(db)
 	if err != nil {
-		return
+		return fmt.Errorf("get last batch: %w", err)
 	}
 
-	err = t.PrepareAppliedMigrations(db)
+	err = t.PrepareAppliedMigrations(ctx, db)
 	if err != nil {
-		return
+		return fmt.Errorf("get last batch: %w", err)
 	}
 
 	err = t.ListSqlFiles()
 	if err != nil {
-		return
+		return fmt.Errorf("get last batch: %w", err)
 	}
 
 	err = t.FilterNewMigrations()
 	if err != nil {
-		return
+		return fmt.Errorf("get last batch: %w", err)
 	}
 
+	return nil
 }
 
 func (t *Tracker) GetLastBatch(db *gorm.DB) error {
@@ -67,9 +75,9 @@ func (t *Tracker) GetLastBatch(db *gorm.DB) error {
 	return nil
 }
 
-func (t *Tracker) PrepareAppliedMigrations(db *gorm.DB) error {
+func (t *Tracker) PrepareAppliedMigrations(ctx context.Context, db *gorm.DB) error {
 	var records []MigoMigration
-	results := db.Table(t.Config.GetMigrationTable()).Select("migration").Scan(&t.AppliedMigrations)
+	results := db.WithContext(ctx).Table(t.Config.GetMigrationTable()).Select("migration").Scan(&t.AppliedMigrations)
 	if results.Error != nil {
 		return results.Error
 	}
@@ -116,10 +124,16 @@ func (t *Tracker) ListSqlFiles() error {
 	return nil
 }
 
-func (t *Tracker) ExtractUpBlock(sql []byte) string {
+func (t *Tracker) ExtractUpBlock(file string) (string, error) {
+
+	content, err := ioutil.ReadFile(file)
+	if err != nil {
+		return "", fmt.Errorf("read file %s: %w", file, err)
+	}
+
 	var out bytes.Buffer
 
-	scanner := bufio.NewScanner(strings.NewReader(string(sql)))
+	scanner := bufio.NewScanner(strings.NewReader(string(content)))
 
 	insideUpBlock := false
 	for scanner.Scan() {
@@ -140,13 +154,19 @@ func (t *Tracker) ExtractUpBlock(sql []byte) string {
 		}
 	}
 
-	return out.String()
+	return out.String(), nil
 }
 
-func (t *Tracker) ExtractDownBlock(sql []byte) string {
+func (t *Tracker) ExtractDownBlock(file string) (string, error) {
+
+	content, err := ioutil.ReadFile(file)
+	if err != nil {
+		return "", fmt.Errorf("read file %s: %w", file, err)
+	}
+
 	var out bytes.Buffer
 
-	scanner := bufio.NewScanner(strings.NewReader(string(sql)))
+	scanner := bufio.NewScanner(strings.NewReader(string(content)))
 
 	insideUpBlock := false
 	for scanner.Scan() {
@@ -167,5 +187,22 @@ func (t *Tracker) ExtractDownBlock(sql []byte) string {
 		}
 	}
 
-	return out.String()
+	return out.String(), nil
+}
+
+func (t *Tracker) GetMigrationFiles() []string {
+	return t.MigrationFiles
+}
+
+func (t *Tracker) AddMigrationInfo(ctx context.Context, db *gorm.DB, file string) error {
+
+	if err := db.WithContext(ctx).Create(&MigoMigration{
+		Migration: strings.Replace(file, t.Config.MigrationsDir, "", -1),
+		Batch:     t.LastBatch + 1,
+	}).Error; err != nil {
+		log.Fatalln(err)
+		return err
+	}
+
+	return nil
 }
