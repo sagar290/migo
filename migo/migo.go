@@ -12,8 +12,9 @@ import (
 )
 
 type Runner struct {
-	Db     *gorm.DB
-	Config *Config
+	Db      *gorm.DB
+	Config  *Config
+	Tracker MigrationTracker
 }
 
 type MigoMigration struct {
@@ -27,7 +28,7 @@ func EnsureMigrationTable(db *gorm.DB) error {
 	return db.AutoMigrate(&MigoMigration{})
 }
 
-func NewMigo(cfg *Config) (Migrator, error) {
+func NewMigo(cfg *Config, tracker Tracker) (Migrator, error) {
 
 	var db *gorm.DB
 	var err error
@@ -53,8 +54,9 @@ func NewMigo(cfg *Config) (Migrator, error) {
 	}
 
 	return &Runner{
-		Db:     db,
-		Config: cfg,
+		Db:      db,
+		Config:  cfg,
+		Tracker: &tracker,
 	}, nil
 }
 
@@ -86,6 +88,6 @@ func (r *Runner) Rollback(ctx context.Context, db *gorm.DB) error {
 	return nil
 }
 
-func (r *Runner) Status(ctx context.Context, db *gorm.DB) ([]MigrationStatus, error) {
+func (r *Runner) Status(ctx context.Context, db *gorm.DB) ([]MigoMigration, error) {
 	return nil, nil
 }

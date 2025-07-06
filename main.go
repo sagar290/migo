@@ -12,5 +12,11 @@ func main() {
 		return
 	}
 
+	migoInstance, err := migo.NewMigo(config, migo.NewTracker(config))
+	if err != nil {
+		return
+	}
+
 	fmt.Printf("config: %+v\n", config)
+	fmt.Printf("config: %+v\n", migoInstance)
 }

@@ -12,11 +12,7 @@ import (
 )
 
 type MigrationTracker interface {
-	//EnsureTable() error
-	//GetAppliedMigrations() ([]string, error)
-	//MarkAsApplied(name string, batch int) error
-	//MarkAsRolledBack(name string) error
-	GetLastBatch(db *gorm.DB) (int, error)
+	GetLastBatch(db *gorm.DB) error
 	PrepareAppliedMigrations(db *gorm.DB) error
 	FilterNewMigrations() error
 	ExtractUpBlock(sql []byte) string
@@ -33,31 +29,42 @@ type AppliedMigration struct {
 type Tracker struct {
 	AppliedMigrations map[string]MigoMigration
 	MigrationFiles    []string
+	LastBatch         int
 	Config            *Config
 }
 
-//
-//func (t *Tracker) EnsureTable() error {}
-//
-//func (t *Tracker) GetAppliedMigrations() ([]string, error) {
-//
-//	return t.AppliedMigrations, nil
-//}
-//
-//func (t *Tracker) MarkAsApplied(name string, batch int) error {
-//	t.AppliedMigrations = append(t.AppliedMigrations, name)
-//	return nil
-//}
-//
-//func (t *Tracker) MarkAsRolledBack(name string) error {
-//
-//	t.AppliedMigrations = append(t.AppliedMigrations, name)
-//}
+func NewTracker(config *Config) *Tracker {
+	return &Tracker{
+		Config: config,
+	}
+}
 
-func (t *Tracker) GetLastBatch(db *gorm.DB) (int, error) {
-	var lastBatch int
-	db.Raw(`SELECT COALESCE(MAX(batch), 0) FROM ?`, t.Config.GetMigrationTable()).Scan(&lastBatch)
-	return lastBatch, nil
+func (t *Tracker) InitTracker(db *gorm.DB) {
+	err := t.GetLastBatch(db)
+	if err != nil {
+		return
+	}
+
+	err = t.PrepareAppliedMigrations(db)
+	if err != nil {
+		return
+	}
+
+	err = t.ListSqlFiles()
+	if err != nil {
+		return
+	}
+
+	err = t.FilterNewMigrations()
+	if err != nil {
+		return
+	}
+
+}
+
+func (t *Tracker) GetLastBatch(db *gorm.DB) error {
+	db.Raw(`SELECT COALESCE(MAX(batch), 0) FROM ?`, t.Config.GetMigrationTable()).Scan(&t.LastBatch)
+	return nil
 }
 
 func (t *Tracker) PrepareAppliedMigrations(db *gorm.DB) error {
