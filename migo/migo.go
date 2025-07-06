@@ -16,13 +16,6 @@ type Runner struct {
 	Config *Config
 }
 
-type MigrationStatus struct {
-	Name      string
-	Applied   bool
-	Batch     int
-	AppliedAt time.Time
-}
-
 type MigoMigration struct {
 	ID        uint      `gorm:"primaryKey;autoIncrement"`
 	Migration string    `gorm:"type:varchar(255);not null;uniqueIndex"`

@@ -26,3 +26,7 @@ func LoadConfig() (*Config, error) {
 
 	return cfg, nil
 }
+
+func (cfg *Config) GetMigrationTable() string {
+	return "migo_migrations"
+}
