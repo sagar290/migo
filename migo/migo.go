@@ -28,7 +28,7 @@ func EnsureMigrationTable(db *gorm.DB) error {
 	return db.AutoMigrate(&MigoMigration{})
 }
 
-func NewMigo(cfg *Config, tracker Tracker) (Migrator, error) {
+func NewMigo(cfg *Config, tracker *Tracker) (Migrator, error) {
 
 	var db *gorm.DB
 	var err error
@@ -56,7 +56,7 @@ func NewMigo(cfg *Config, tracker Tracker) (Migrator, error) {
 	return &Runner{
 		Db:      db,
 		Config:  cfg,
-		Tracker: &tracker,
+		Tracker: tracker,
 	}, nil
 }
 
