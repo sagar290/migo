@@ -21,7 +21,7 @@ type MigrationTracker interface {
 	ExtractDownBlock(file string) (string, error)
 	InitTracker(ctx context.Context, db *gorm.DB) error
 	GetMigrationFiles() []string
-	GetAppliedMigrations() map[string]MigoMigration
+	GetAppliedMigrations() []string
 	AddMigrationInfo(ctx context.Context, db *gorm.DB, file string) error
 	RemoveMigrationInfo(ctx context.Context, db *gorm.DB, file string) error
 	ListSqlFiles() error

@@ -30,3 +30,7 @@ func LoadConfig() (*Config, error) {
 func (cfg *Config) GetMigrationTable() string {
 	return "migo_migrations"
 }
+
+func (cfg *Config) GetSchemaName() string {
+	return "public"
+}

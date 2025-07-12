@@ -186,8 +186,15 @@ func (t *Tracker) GetMigrationFiles() []string {
 	return t.MigrationFiles
 }
 
-func (t *Tracker) GetAppliedMigrations() map[string]MigoMigration {
-	return t.AppliedMigrations
+func (t *Tracker) GetAppliedMigrations() []string {
+
+	var files []string
+
+	for _, file := range t.MigrationFiles {
+		files = append(files, file)
+	}
+
+	return files
 }
 
 func (t *Tracker) AddMigrationInfo(ctx context.Context, db *gorm.DB, file string) error {

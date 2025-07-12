@@ -71,6 +71,104 @@ func (r *Runner) Up(ctx context.Context, db *gorm.DB) error {
 
 	files := r.Tracker.GetMigrationFiles()
 
+	err = UpMigrationFiles(ctx, db, files, r)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Rollback migration according to the batch id
+func (r *Runner) Rollback(ctx context.Context, db *gorm.DB) error {
+
+	err := r.Tracker.InitTracker(ctx, db)
+	if err != nil {
+		return err
+	}
+
+	lastBatchId := r.Tracker.GetLastBatch()
+
+	appliedFiles := r.Tracker.GetAppliedMigrationFileByBatchId(lastBatchId)
+
+	err = DownMigrationFiles(ctx, db, appliedFiles, r)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Refresh rollback all table and run migrate
+func (r *Runner) Refresh(ctx context.Context, db *gorm.DB) error {
+
+	err := r.Tracker.InitTracker(ctx, db)
+	if err != nil {
+		return err
+	}
+
+	appliedFiles := r.Tracker.GetAppliedMigrations()
+
+	err = DownMigrationFiles(ctx, db, appliedFiles, r)
+	if err != nil {
+		return err
+	}
+
+	err = UpMigrationFiles(ctx, db, appliedFiles, r)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Fresh drop all table and run migrate
+func (r *Runner) Fresh(ctx context.Context, db *gorm.DB) error {
+
+	//todo: will be different for mysql
+	var tables []string
+	db.Raw(`
+		SELECT tablename 
+		FROM pg_tables 
+		WHERE schemaname = ?
+		  AND tablename != ?
+	`, r.Config.GetSchemaName(), r.Config.GetMigrationTable()).Scan(&tables)
+
+	for _, table := range tables {
+		if err := db.Migrator().DropTable(table); err != nil {
+			log.Printf("❌ Failed to drop table %s: %v", table, err)
+		} else {
+			log.Printf("✅ Dropped table %s", table)
+		}
+	}
+
+	// fresh the migration table
+	err := db.Exec(`TRUNCATE TABLE ? RESTART IDENTITY CASCADE`, r.Config.GetMigrationTable()).Error
+	if err != nil {
+		log.Fatalf("Failed to truncate table: %v", err)
+	}
+
+	err = r.Tracker.InitTracker(ctx, db)
+	if err != nil {
+		return err
+	}
+
+	files := r.Tracker.GetMigrationFiles()
+
+	err = UpMigrationFiles(ctx, db, files, r)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Status shows all applied migrations
+func (r *Runner) Status(ctx context.Context, db *gorm.DB) ([]MigoMigration, error) {
+	return nil, nil
+}
+
+func UpMigrationFiles(ctx context.Context, db *gorm.DB, files []string, r *Runner) error {
 	for _, file := range files {
 		queryText, err := r.Tracker.ExtractUpBlock(file)
 		if err != nil {
@@ -92,22 +190,10 @@ func (r *Runner) Up(ctx context.Context, db *gorm.DB) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
-// Rollback migration according to the batch id
-func (r *Runner) Rollback(ctx context.Context, db *gorm.DB) error {
-
-	err := r.Tracker.InitTracker(ctx, db)
-	if err != nil {
-		return err
-	}
-
-	lastBatchId := r.Tracker.GetLastBatch()
-
-	appliedFiles := r.Tracker.GetAppliedMigrationFileByBatchId(lastBatchId)
-
+func DownMigrationFiles(ctx context.Context, db *gorm.DB, appliedFiles []string, r *Runner) error {
 	for _, file := range appliedFiles {
 		queryText, err := r.Tracker.ExtractDownBlock(file)
 		if err != nil {
@@ -129,23 +215,5 @@ func (r *Runner) Rollback(ctx context.Context, db *gorm.DB) error {
 			return err
 		}
 	}
-
 	return nil
-}
-
-// Refresh rollback all table and run migrate
-func (r *Runner) Refresh(ctx context.Context, db *gorm.DB) error {
-
-	return nil
-}
-
-// Fresh drop all table and run migrate
-func (r *Runner) Fresh(ctx context.Context, db *gorm.DB) error {
-
-	return nil
-}
-
-// Status shows all applied migrations
-func (r *Runner) Status(ctx context.Context, db *gorm.DB) ([]MigoMigration, error) {
-	return nil, nil
 }
