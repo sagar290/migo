@@ -61,6 +61,7 @@ func NewMigo(cfg *Config, tracker *Tracker) (Migrator, error) {
 	}, nil
 }
 
+// Up migrate table
 func (r *Runner) Up(ctx context.Context, db *gorm.DB) error {
 
 	err := r.Tracker.InitTracker(ctx, db)
@@ -95,29 +96,56 @@ func (r *Runner) Up(ctx context.Context, db *gorm.DB) error {
 	return nil
 }
 
-func (r *Runner) Down(ctx context.Context, db *gorm.DB) error {
+// Rollback migration according to the batch id
+func (r *Runner) Rollback(ctx context.Context, db *gorm.DB) error {
+
+	err := r.Tracker.InitTracker(ctx, db)
+	if err != nil {
+		return err
+	}
+
+	lastBatchId := r.Tracker.GetLastBatch()
+
+	appliedFiles := r.Tracker.GetAppliedMigrationFileByBatchId(lastBatchId)
+
+	for _, file := range appliedFiles {
+		queryText, err := r.Tracker.ExtractDownBlock(file)
+		if err != nil {
+			return err
+		}
+
+		if strings.TrimSpace(queryText) == "" {
+			log.Println("⚠️ Skipping empty or no-up-block:", file)
+			continue
+		}
+
+		if err := db.Exec(queryText).Error; err != nil {
+			log.Printf("❌ Failed to execute %s: %v\n", file, err)
+			continue
+		}
+
+		err = r.Tracker.RemoveMigrationInfo(ctx, db, file)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-func (r *Runner) Step(ctx context.Context, n int, db *gorm.DB) error {
+// Refresh rollback all table and run migrate
+func (r *Runner) Refresh(ctx context.Context, db *gorm.DB) error {
 
 	return nil
 }
 
-func (r *Runner) Reset(ctx context.Context, db *gorm.DB) error {
-
-	return nil
-}
-
+// Fresh drop all table and run migrate
 func (r *Runner) Fresh(ctx context.Context, db *gorm.DB) error {
 
 	return nil
 }
 
-func (r *Runner) Rollback(ctx context.Context, db *gorm.DB) error {
-	return nil
-}
-
+// Status shows all applied migrations
 func (r *Runner) Status(ctx context.Context, db *gorm.DB) ([]MigoMigration, error) {
 	return nil, nil
 }

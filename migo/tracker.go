@@ -15,17 +15,6 @@ import (
 	"time"
 )
 
-type MigrationTracker interface {
-	GetLastBatch(db *gorm.DB) error
-	PrepareAppliedMigrations(ctx context.Context, db *gorm.DB) error
-	FilterNewMigrations() error
-	ExtractUpBlock(file string) (string, error)
-	ExtractDownBlock(file string) (string, error)
-	InitTracker(ctx context.Context, db *gorm.DB) error
-	GetMigrationFiles() []string
-	AddMigrationInfo(ctx context.Context, db *gorm.DB, file string) error
-}
-
 type AppliedMigration struct {
 	ID        uint
 	Migration string
@@ -47,12 +36,7 @@ func NewTracker(config *Config) *Tracker {
 }
 
 func (t *Tracker) InitTracker(ctx context.Context, db *gorm.DB) error {
-	err := t.GetLastBatch(db)
-	if err != nil {
-		return fmt.Errorf("get last batch: %w", err)
-	}
-
-	err = t.PrepareAppliedMigrations(ctx, db)
+	err := t.PrepareAppliedMigrations(ctx, db)
 	if err != nil {
 		return fmt.Errorf("get last batch: %w", err)
 	}
@@ -70,13 +54,21 @@ func (t *Tracker) InitTracker(ctx context.Context, db *gorm.DB) error {
 	return nil
 }
 
-func (t *Tracker) GetLastBatch(db *gorm.DB) error {
-	db.Raw(`SELECT COALESCE(MAX(batch), 0) FROM ?`, t.Config.GetMigrationTable()).Scan(&t.LastBatch)
-	return nil
+func (t *Tracker) GetLastBatch() int {
+	return t.LastBatch
 }
 
 func (t *Tracker) PrepareAppliedMigrations(ctx context.Context, db *gorm.DB) error {
+
 	var records []MigoMigration
+
+	// prepare last batch id
+	err := db.Raw(`SELECT COALESCE(MAX(batch), 0) FROM ?`, t.Config.GetMigrationTable()).Scan(&t.LastBatch).Error
+	if err != nil {
+		return fmt.Errorf("get last batch: %w", err)
+	}
+
+	// prepare migration files
 	results := db.WithContext(ctx).Table(t.Config.GetMigrationTable()).Select("migration").Scan(&t.AppliedMigrations)
 	if results.Error != nil {
 		return results.Error
@@ -194,15 +186,42 @@ func (t *Tracker) GetMigrationFiles() []string {
 	return t.MigrationFiles
 }
 
+func (t *Tracker) GetAppliedMigrations() map[string]MigoMigration {
+	return t.AppliedMigrations
+}
+
 func (t *Tracker) AddMigrationInfo(ctx context.Context, db *gorm.DB, file string) error {
 
 	if err := db.WithContext(ctx).Create(&MigoMigration{
-		Migration: strings.Replace(file, t.Config.MigrationsDir, "", -1),
-		Batch:     t.LastBatch + 1,
+		Migration: t.Config.MigrationsDir,
+		Batch:     t.GetLastBatch() + 1,
 	}).Error; err != nil {
-		log.Fatalln(err)
+		log.Fatalf("❌ Failed to add migration: %v", err)
 		return err
 	}
 
 	return nil
+}
+
+func (t *Tracker) RemoveMigrationInfo(ctx context.Context, db *gorm.DB, file string) error {
+
+	if err := db.Where("migration = ?", file).Delete(&MigoMigration{}).Error; err != nil {
+		log.Fatalf("❌ Failed to delete migration: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (t *Tracker) GetAppliedMigrationFileByBatchId(batchId int) []string {
+
+	var files []string
+
+	for _, migration := range t.AppliedMigrations {
+		if migration.Batch == batchId {
+			files = append(files, migration.Migration)
+		}
+	}
+
+	return files
 }
