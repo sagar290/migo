@@ -43,7 +43,7 @@ func (t *Tracker) InitTracker(ctx context.Context, db *gorm.DB) error {
 
 	err = t.ListSqlFiles()
 	if err != nil {
-		return fmt.Errorf("get last batch: %w", err)
+		return fmt.Errorf("ListSqlFiles: %w", err)
 	}
 
 	err = t.FilterNewMigrations()
