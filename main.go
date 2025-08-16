@@ -28,7 +28,4 @@ func main() {
 		os.Exit(1)
 	}
 
-	//fmt.Printf("config: %+v\n", config)
-	//fmt.Printf("config: %+v\n", migoInstance)
-
 }
