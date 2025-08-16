@@ -75,6 +75,8 @@ func (t *Tracker) PrepareAppliedMigrations(ctx context.Context, db *gorm.DB) err
 		return results.Error
 	}
 
+	t.AppliedMigrations = make(map[string]MigoMigration, len(records))
+
 	for _, r := range records {
 		t.AppliedMigrations[r.Migration] = r
 	}
