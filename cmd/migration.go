@@ -43,3 +43,13 @@ func RefreshScript(_ *cobra.Command, _ []string) {
 		panic(err)
 	}
 }
+
+func FreshScript(_ *cobra.Command, _ []string) {
+
+	ctx := context.Background()
+
+	err := migoInstance.Fresh(ctx)
+	if err != nil {
+		panic(err)
+	}
+}

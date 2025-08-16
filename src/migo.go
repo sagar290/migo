@@ -139,25 +139,14 @@ func (r *Runner) Refresh(ctx context.Context) error {
 // Fresh drop all table and run migrate
 func (r *Runner) Fresh(ctx context.Context) error {
 
-	//todo: will be different for mysql
-	var tables []string
-	db.Raw(`
-		SELECT tablename 
-		FROM pg_tables 
-		WHERE schemaname = ?
-		  AND tablename != ?
-	`, r.Config.GetSchemaName(), r.Config.GetMigrationTable()).Scan(&tables)
-
-	for _, table := range tables {
-		if err := db.Migrator().DropTable(table); err != nil {
-			log.Printf("❌ Failed to drop table %s: %v", table, err)
-		} else {
-			log.Printf("✅ Dropped table %s", table)
-		}
+	err := DropTableByDialect(r.Config.GetSchemaName(), r.Config.GetMigrationTable())
+	if err != nil {
+		return err
 	}
 
 	// fresh the migration table
-	err := db.Exec(`TRUNCATE TABLE ? RESTART IDENTITY CASCADE`, r.Config.GetMigrationTable()).Error
+	query := fmt.Sprintf(`TRUNCATE TABLE %s RESTART IDENTITY CASCADE`, r.Config.GetMigrationTable())
+	err = db.Exec(query).Error
 	if err != nil {
 		log.Fatalf("Failed to truncate table: %v", err)
 	}
@@ -172,6 +161,133 @@ func (r *Runner) Fresh(ctx context.Context) error {
 	err = UpMigrationFiles(ctx, files, r)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func DropTableByDialect(schemaName, migrationsTable string) error {
+	var tables []struct {
+		Schema string
+		Name   string
+	}
+
+	switch db.Dialector.Name() {
+
+	// -------------------- PostgreSQL (also covers CockroachDB under "postgres") --------------------
+	case "postgres":
+		// list base tables in a schema (skip views), exclude migrations table
+		if err := db.Raw(`
+			SELECT table_schema AS schema, table_name AS name
+			FROM information_schema.tables
+			WHERE table_type = 'BASE TABLE'
+			  AND table_schema = ?
+			  AND table_name <> ?
+		`, schemaName, migrationsTable).Scan(&tables).Error; err != nil {
+			return err
+		}
+
+		for _, t := range tables {
+			qualified := fmt.Sprintf(`%q.%q`, t.Schema, t.Name)
+			q := fmt.Sprintf(`DROP TABLE IF EXISTS %s CASCADE`, qualified)
+			if err := db.Exec(q).Error; err != nil {
+				log.Printf("❌ Failed to drop %s: %v", qualified, err)
+			} else {
+				log.Printf("⛔️ Dropped %s", qualified)
+			}
+		}
+
+	// -------------------- MySQL / MariaDB --------------------
+	case "mysql":
+		// disable FK checks so drop order doesn't matter
+		if err := db.Exec(`SET FOREIGN_KEY_CHECKS = 0`).Error; err != nil {
+			return err
+		}
+		defer db.Exec(`SET FOREIGN_KEY_CHECKS = 1`)
+
+		// schemaName here is the database name
+		if err := db.Raw(`
+			SELECT table_schema AS schema, table_name AS name
+			FROM information_schema.tables
+			WHERE table_schema = ?
+			  AND table_type = 'BASE TABLE'
+			  AND table_name <> ?
+		`, schemaName, migrationsTable).Scan(&tables).Error; err != nil {
+			return err
+		}
+
+		for _, t := range tables {
+			q := fmt.Sprintf("DROP TABLE IF EXISTS `%s`.`%s`", schemaName, t.Name)
+			if err := db.Exec(q).Error; err != nil {
+				log.Printf("❌ Failed to drop %s.%s: %v", schemaName, t.Name, err)
+			} else {
+				log.Printf("⛔️ Dropped %s.%s", schemaName, t.Name)
+			}
+		}
+
+	// -------------------- SQLite --------------------
+	case "sqlite":
+		// turn off FKs to avoid dependency errors
+		if err := db.Exec(`PRAGMA foreign_keys = OFF`).Error; err != nil {
+			return err
+		}
+		defer db.Exec(`PRAGMA foreign_keys = ON`)
+
+		// schemaName is ignored in SQLite; it’s a single-file DB
+		if err := db.Raw(`
+			SELECT name AS name
+			FROM sqlite_master
+			WHERE type = 'table'
+			  AND name <> ?
+			  AND name NOT LIKE 'sqlite_%'
+		`, migrationsTable).Scan(&tables).Error; err != nil {
+			return err
+		}
+
+		for _, t := range tables {
+			q := fmt.Sprintf(`DROP TABLE IF EXISTS "%s"`, t.Name)
+			if err := db.Exec(q).Error; err != nil {
+				log.Printf("❌ Failed to drop %s: %v", t.Name, err)
+			} else {
+				log.Printf("⛔️Dropped %s", t.Name)
+			}
+		}
+
+	// -------------------- SQL Server --------------------
+	case "sqlserver":
+		// Default schema is usually dbo; pass via schemaName.
+		// Gather base tables for the schema (exclude views & migrations table)
+		if err := db.Raw(`
+			SELECT TABLE_SCHEMA AS schema, TABLE_NAME AS name
+			FROM INFORMATION_SCHEMA.TABLES
+			WHERE TABLE_TYPE = 'BASE TABLE'
+			  AND TABLE_SCHEMA = ?
+			  AND TABLE_NAME <> ?
+		`, schemaName, migrationsTable).Scan(&tables).Error; err != nil {
+			return err
+		}
+
+		// Disable constraints per table (SQL Server doesn't have DROP ... CASCADE)
+		for _, t := range tables {
+			qualified := fmt.Sprintf(`[%s].[%s]`, t.Schema, t.Name)
+
+			// Disable all constraints to avoid FK issues
+			if err := db.Exec(fmt.Sprintf(`ALTER TABLE %s NOCHECK CONSTRAINT ALL`, qualified)).Error; err != nil {
+				// not fatal; try to drop anyway
+				log.Printf("⚠️  Could not disable constraints on %s: %v", qualified, err)
+			}
+
+			// SQL Server 2016+ supports DROP TABLE IF EXISTS
+			drop := fmt.Sprintf(`DROP TABLE IF EXISTS %s`, qualified)
+			if err := db.Exec(drop).Error; err != nil {
+				log.Printf("❌ Failed to drop %s: %v", qualified, err)
+			} else {
+				log.Printf("⛔️ Dropped %s", qualified)
+			}
+		}
+
+	default:
+		return fmt.Errorf("unsupported dialect: %s", db.Dialector.Name())
 	}
 
 	return nil

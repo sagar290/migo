@@ -60,6 +60,16 @@ Useful in development to rebuild schema from scratch.
 	Run: RefreshScript,
 }
 
+var FreshCommand = &cobra.Command{
+	Use:   "fresh",
+	Short: "Drop all tables and re-run all migrations",
+	Long: `
+Drops all database tables (except the migrations table) and applies all migrations from scratch.
+Useful to get a clean schema during development.
+	`,
+	Run: FreshScript,
+}
+
 func Init(migo src.Migrator) {
 
 	UpCommand.Flags().IntVar(&steps, "steps", 0, "Number of migrations to run (0 = all)")
@@ -71,5 +81,6 @@ func Init(migo src.Migrator) {
 	RootCmd.AddCommand(UpCommand)
 	RootCmd.AddCommand(DownCommand)
 	RootCmd.AddCommand(RefreshCommand)
+	RootCmd.AddCommand(FreshCommand)
 	migoInstance = migo
 }
