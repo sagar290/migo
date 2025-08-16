@@ -28,7 +28,7 @@
 ### Install
 
 ```bash
-go install github.com/sagar290/migo/cmd/migo@latest
+go install github.com/sagar290/migo@latest
 ```
 
 Make sure `$GOPATH/bin` (or `$GOBIN`) is in your `PATH`.
