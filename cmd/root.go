@@ -41,10 +41,24 @@ Examples:
 	Run: UpScript,
 }
 
+var DownCommand = &cobra.Command{
+	Use:   "down",
+	Short: "Rollback the last batch of migrations",
+	Long: `
+Reverts the most recent migrations applied to the database. Use --steps to rollback only N migrations.
+	`,
+	Run: DownScript,
+}
+
 func Init(migo src.Migrator) {
 
 	UpCommand.Flags().IntVar(&steps, "steps", 0, "Number of migrations to run (0 = all)")
 	UpCommand.Flags().BoolVar(&dryRun, "dry-run", false, "Preview pending migrations without applying")
+
+	DownCommand.Flags().IntVar(&steps, "steps", 0, "Number of migrations to run (0 = all)")
+	DownCommand.Flags().BoolVar(&dryRun, "dry-run", false, "Preview pending migrations without applying")
+
 	RootCmd.AddCommand(UpCommand)
+	RootCmd.AddCommand(DownCommand)
 	migoInstance = migo
 }

@@ -233,5 +233,7 @@ func (t *Tracker) GetAppliedMigrationFileByBatchId(batchId int) []string {
 		}
 	}
 
+	sort.Strings(files)
+
 	return files
 }

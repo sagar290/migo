@@ -89,6 +89,8 @@ func (r *Runner) Up(ctx context.Context) error {
 // Rollback migration according to the batch id
 func (r *Runner) Rollback(ctx context.Context) error {
 
+	steps, _ := ctx.Value(common.StepsKey).(int)
+
 	err := r.Tracker.InitTracker(ctx, db)
 	if err != nil {
 		return err
@@ -98,7 +100,13 @@ func (r *Runner) Rollback(ctx context.Context) error {
 
 	appliedFiles := r.Tracker.GetAppliedMigrationFileByBatchId(lastBatchId)
 
+	// if steps provided limit the files
+	if steps > 0 && steps < len(appliedFiles) {
+		appliedFiles = appliedFiles[(len(appliedFiles) - steps):]
+	}
+
 	err = DownMigrationFiles(ctx, appliedFiles, r)
+
 	if err != nil {
 		return err
 	}
@@ -225,7 +233,7 @@ func DownMigrationFiles(ctx context.Context, appliedFiles []string, r *Runner) e
 		}
 
 		if strings.TrimSpace(queryText) == "" {
-			log.Println("⚠️ Skipping empty or no-up-block:", file)
+			log.Println("⚠️ Skipping empty or no-down-block:", file)
 			continue
 		}
 
@@ -238,6 +246,8 @@ func DownMigrationFiles(ctx context.Context, appliedFiles []string, r *Runner) e
 		if err != nil {
 			return err
 		}
+
+		log.Printf("✅ %s", file)
 	}
 	return nil
 }
