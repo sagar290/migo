@@ -51,6 +51,8 @@ func (t *Tracker) InitTracker(ctx context.Context, db *gorm.DB) error {
 		return fmt.Errorf("FilterNewMigrations: %w", err)
 	}
 
+	fmt.Println("InitTracker", t.AppliedMigrations)
+
 	return nil
 }
 
@@ -193,9 +195,11 @@ func (t *Tracker) GetAppliedMigrations() []string {
 
 	var files []string
 
-	for _, file := range t.MigrationFiles {
-		files = append(files, file)
+	for _, file := range t.AppliedMigrations {
+		files = append(files, file.Migration)
 	}
+
+	sort.Strings(files)
 
 	return files
 }

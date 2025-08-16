@@ -50,6 +50,16 @@ Reverts the most recent migrations applied to the database. Use --steps to rollb
 	Run: DownScript,
 }
 
+var RefreshCommand = &cobra.Command{
+	Use:   "refresh",
+	Short: "Rollback all migrations and re-apply them",
+	Long: `
+Drops all applied migrations (by running Down in reverse) and then runs all Up migrations again.
+Useful in development to rebuild schema from scratch.
+	`,
+	Run: RefreshScript,
+}
+
 func Init(migo src.Migrator) {
 
 	UpCommand.Flags().IntVar(&steps, "steps", 0, "Number of migrations to run (0 = all)")
@@ -60,5 +70,6 @@ func Init(migo src.Migrator) {
 
 	RootCmd.AddCommand(UpCommand)
 	RootCmd.AddCommand(DownCommand)
+	RootCmd.AddCommand(RefreshCommand)
 	migoInstance = migo
 }

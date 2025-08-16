@@ -123,7 +123,7 @@ func (r *Runner) Refresh(ctx context.Context) error {
 	}
 
 	appliedFiles := r.Tracker.GetAppliedMigrations()
-
+	fmt.Println(appliedFiles)
 	err = DownMigrationFiles(ctx, appliedFiles, r)
 	if err != nil {
 		return err
@@ -226,7 +226,9 @@ func UpMigrationFiles(ctx context.Context, files []string, r *Runner) error {
 }
 
 func DownMigrationFiles(ctx context.Context, appliedFiles []string, r *Runner) error {
-	for _, file := range appliedFiles {
+	dry, _ := ctx.Value(common.DryRunKey).(bool)
+
+	for i, file := range appliedFiles {
 		queryText, err := r.Tracker.ExtractDownBlock(file)
 		if err != nil {
 			return err
@@ -234,6 +236,11 @@ func DownMigrationFiles(ctx context.Context, appliedFiles []string, r *Runner) e
 
 		if strings.TrimSpace(queryText) == "" {
 			log.Println("⚠️ Skipping empty or no-down-block:", file)
+			continue
+		}
+
+		if dry {
+			fmt.Printf("  %2d) %s\n", i+1, queryText)
 			continue
 		}
 
@@ -247,7 +254,7 @@ func DownMigrationFiles(ctx context.Context, appliedFiles []string, r *Runner) e
 			return err
 		}
 
-		log.Printf("✅ %s", file)
+		log.Printf("⛔️%s", file)
 	}
 	return nil
 }
