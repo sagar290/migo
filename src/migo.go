@@ -123,7 +123,6 @@ func (r *Runner) Refresh(ctx context.Context) error {
 	}
 
 	appliedFiles := r.Tracker.GetAppliedMigrations()
-	fmt.Println(appliedFiles)
 	err = DownMigrationFiles(ctx, appliedFiles, r)
 	if err != nil {
 		return err

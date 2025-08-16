@@ -51,8 +51,6 @@ func (t *Tracker) InitTracker(ctx context.Context, db *gorm.DB) error {
 		return fmt.Errorf("FilterNewMigrations: %w", err)
 	}
 
-	fmt.Println("InitTracker", t.AppliedMigrations)
-
 	return nil
 }
 
