@@ -30,9 +30,9 @@ Make sure `$GOPATH/bin` (or `$GOBIN`) is in your `PATH`.
 
 ### 📥 Quick Download Example (Linux)
 ```
-curl -L -o cf https://github.com/sagar290/cf/releases/latest/download/cf-linux-amd64
-chmod +x cf
-./cf --help
+curl -L -o migo https://github.com/sagar290/migo/releases/latest/download/migo-linux-amd64
+chmod +x migo
+./migo --help
 ```
 ### Create a migration
 
@@ -45,9 +45,6 @@ migo make "create drivers table"
 This generates a timestamped `.sql` file with UP/DOWN placeholders:
 
 ```sql
--- create drivers table
--- created at 2025-08-16T12:34:56Z
-
 [UP]
 -- Write your UP migration here
 [/UP]
