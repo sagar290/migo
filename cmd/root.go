@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/sagar290/migo/src"
 	"github.com/spf13/cobra"
+	"log"
 )
 
 var migoInstance src.Migrator
@@ -81,7 +82,7 @@ Example:
 	Run: MakeScript,
 }
 
-func Init(migo src.Migrator, config *src.Config) {
+func Init() {
 
 	UpCommand.Flags().IntVar(&steps, "steps", 0, "Number of migrations to run (0 = all)")
 	UpCommand.Flags().BoolVar(&dryRun, "dry-run", false, "Preview pending migrations without applying")
@@ -94,6 +95,18 @@ func Init(migo src.Migrator, config *src.Config) {
 	RootCmd.AddCommand(RefreshCommand)
 	RootCmd.AddCommand(FreshCommand)
 	RootCmd.AddCommand(MakeCommand)
-	migoInstance = migo
+
+	config, err := src.LoadConfig()
+	if err != nil {
+		log.Println("⚠️ config error:", err)
+		return
+	}
+
+	migoInstance, err = src.NewMigo(config, src.NewTracker(config))
+	if err != nil {
+		log.Println("⚠️ migoInstance error:", err)
+		return
+	}
+
 	configInstance = config
 }
