@@ -200,7 +200,7 @@ func (t *Tracker) GetAppliedMigrations() []string {
 func (t *Tracker) AddMigrationInfo(ctx context.Context, db *gorm.DB, file string) error {
 
 	if err := db.WithContext(ctx).Create(&MigoMigration{
-		Migration: t.Config.MigrationsDir,
+		Migration: file,
 		Batch:     t.GetLastBatch() + 1,
 	}).Error; err != nil {
 		log.Fatalf("❌ Failed to add migration: %v", err)
