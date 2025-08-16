@@ -8,10 +8,12 @@ import (
 )
 
 type Config struct {
-	DBType        string `mapstructure:"db_type"`
-	DBURL         string `mapstructure:"db_url"`
-	MigrationsDir string `mapstructure:"migrations_dir"`
-	LogLevel      string `mapstructure:"log_level"`
+	DBType         string `mapstructure:"db_type"`
+	DBURL          string `mapstructure:"db_url"`
+	MigrationsDir  string `mapstructure:"migrations_dir"`
+	LogLevel       string `mapstructure:"log_level"`
+	Schema         string `mapstructure:"schema"`
+	MigrationTable string `mapstructure:"migration_table"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -49,9 +51,23 @@ func LoadConfig() (*Config, error) {
 }
 
 func (cfg *Config) GetMigrationTable() string {
+	if cfg.MigrationTable != "" {
+		return cfg.MigrationTable
+	}
+
 	return "migo_migrations"
+
 }
 
 func (cfg *Config) GetSchemaName() string {
+
+	if cfg.Schema != "" {
+		return cfg.Schema
+	}
+
 	return "public"
+}
+
+func (cfg *Config) GetMigrationDir() string {
+	return cfg.MigrationsDir
 }

@@ -21,7 +21,7 @@ func main() {
 		return
 	}
 
-	cmd.Init(migoInstance)
+	cmd.Init(migoInstance, config)
 
 	if err := cmd.RootCmd.Execute(); err != nil {
 		fmt.Println("❌", err)

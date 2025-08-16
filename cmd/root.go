@@ -6,6 +6,8 @@ import (
 )
 
 var migoInstance src.Migrator
+var configInstance *src.Config
+
 var (
 	steps  int
 	dryRun bool
@@ -70,7 +72,16 @@ Useful to get a clean schema during development.
 	Run: FreshScript,
 }
 
-func Init(migo src.Migrator) {
+var MakeCommand = &cobra.Command{
+	Use:   "make [description]",
+	Short: "Create a new migration file",
+	Long: `Generate new migration files with a timestamp prefix.
+Example:
+  migo make "create table for driver"`,
+	Run: MakeScript,
+}
+
+func Init(migo src.Migrator, config *src.Config) {
 
 	UpCommand.Flags().IntVar(&steps, "steps", 0, "Number of migrations to run (0 = all)")
 	UpCommand.Flags().BoolVar(&dryRun, "dry-run", false, "Preview pending migrations without applying")
@@ -82,5 +93,7 @@ func Init(migo src.Migrator) {
 	RootCmd.AddCommand(DownCommand)
 	RootCmd.AddCommand(RefreshCommand)
 	RootCmd.AddCommand(FreshCommand)
+	RootCmd.AddCommand(MakeCommand)
 	migoInstance = migo
+	configInstance = config
 }
