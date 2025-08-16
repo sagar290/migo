@@ -1,4 +1,4 @@
-package migo
+package src
 
 import (
 	"context"
@@ -6,11 +6,11 @@ import (
 )
 
 type Migrator interface {
-	Up(ctx context.Context, db *gorm.DB) error
-	Rollback(ctx context.Context, db *gorm.DB) error
-	Refresh(ctx context.Context, db *gorm.DB) error
-	Fresh(ctx context.Context, db *gorm.DB) error
-	Status(ctx context.Context, db *gorm.DB) ([]MigoMigration, error)
+	Up(ctx context.Context) error
+	Rollback(ctx context.Context) error
+	Refresh(ctx context.Context) error
+	Fresh(ctx context.Context) error
+	Status(ctx context.Context) ([]MigoMigration, error)
 }
 
 type MigrationTracker interface {

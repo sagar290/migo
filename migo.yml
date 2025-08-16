@@ -1,0 +1,5 @@
+migo:
+  db_type: postgres
+  db_url: postgres://root:secret@localhost:5432/migoTest
+  migrations_dir: ./migrations
+  log_level: info

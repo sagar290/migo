@@ -1,8 +1,9 @@
-package migo
+package src
 
 import (
 	"context"
 	"fmt"
+	"github.com/sagar290/migo/common"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -12,8 +13,9 @@ import (
 	"time"
 )
 
+var db *gorm.DB
+
 type Runner struct {
-	Db      *gorm.DB
 	Config  *Config
 	Tracker MigrationTracker
 }
@@ -31,7 +33,6 @@ func EnsureMigrationTable(db *gorm.DB) error {
 
 func NewMigo(cfg *Config, tracker *Tracker) (Migrator, error) {
 
-	var db *gorm.DB
 	var err error
 
 	switch cfg.DBType {
@@ -55,14 +56,15 @@ func NewMigo(cfg *Config, tracker *Tracker) (Migrator, error) {
 	}
 
 	return &Runner{
-		Db:      db,
 		Config:  cfg,
 		Tracker: tracker,
 	}, nil
 }
 
 // Up migrate table
-func (r *Runner) Up(ctx context.Context, db *gorm.DB) error {
+func (r *Runner) Up(ctx context.Context) error {
+
+	steps, _ := ctx.Value(common.StepsKey).(int)
 
 	err := r.Tracker.InitTracker(ctx, db)
 	if err != nil {
@@ -71,7 +73,12 @@ func (r *Runner) Up(ctx context.Context, db *gorm.DB) error {
 
 	files := r.Tracker.GetMigrationFiles()
 
-	err = UpMigrationFiles(ctx, db, files, r)
+	// if steps provided limit the files
+	if steps > 0 && steps < len(files) {
+		files = files[:steps]
+	}
+
+	err = UpMigrationFiles(ctx, files, r)
 	if err != nil {
 		return err
 	}
@@ -80,7 +87,7 @@ func (r *Runner) Up(ctx context.Context, db *gorm.DB) error {
 }
 
 // Rollback migration according to the batch id
-func (r *Runner) Rollback(ctx context.Context, db *gorm.DB) error {
+func (r *Runner) Rollback(ctx context.Context) error {
 
 	err := r.Tracker.InitTracker(ctx, db)
 	if err != nil {
@@ -91,7 +98,7 @@ func (r *Runner) Rollback(ctx context.Context, db *gorm.DB) error {
 
 	appliedFiles := r.Tracker.GetAppliedMigrationFileByBatchId(lastBatchId)
 
-	err = DownMigrationFiles(ctx, db, appliedFiles, r)
+	err = DownMigrationFiles(ctx, appliedFiles, r)
 	if err != nil {
 		return err
 	}
@@ -100,7 +107,7 @@ func (r *Runner) Rollback(ctx context.Context, db *gorm.DB) error {
 }
 
 // Refresh rollback all table and run migrate
-func (r *Runner) Refresh(ctx context.Context, db *gorm.DB) error {
+func (r *Runner) Refresh(ctx context.Context) error {
 
 	err := r.Tracker.InitTracker(ctx, db)
 	if err != nil {
@@ -109,12 +116,12 @@ func (r *Runner) Refresh(ctx context.Context, db *gorm.DB) error {
 
 	appliedFiles := r.Tracker.GetAppliedMigrations()
 
-	err = DownMigrationFiles(ctx, db, appliedFiles, r)
+	err = DownMigrationFiles(ctx, appliedFiles, r)
 	if err != nil {
 		return err
 	}
 
-	err = UpMigrationFiles(ctx, db, appliedFiles, r)
+	err = UpMigrationFiles(ctx, appliedFiles, r)
 	if err != nil {
 		return err
 	}
@@ -123,7 +130,7 @@ func (r *Runner) Refresh(ctx context.Context, db *gorm.DB) error {
 }
 
 // Fresh drop all table and run migrate
-func (r *Runner) Fresh(ctx context.Context, db *gorm.DB) error {
+func (r *Runner) Fresh(ctx context.Context) error {
 
 	//todo: will be different for mysql
 	var tables []string
@@ -155,7 +162,7 @@ func (r *Runner) Fresh(ctx context.Context, db *gorm.DB) error {
 
 	files := r.Tracker.GetMigrationFiles()
 
-	err = UpMigrationFiles(ctx, db, files, r)
+	err = UpMigrationFiles(ctx, files, r)
 	if err != nil {
 		return err
 	}
@@ -164,12 +171,22 @@ func (r *Runner) Fresh(ctx context.Context, db *gorm.DB) error {
 }
 
 // Status shows all applied migrations
-func (r *Runner) Status(ctx context.Context, db *gorm.DB) ([]MigoMigration, error) {
+func (r *Runner) Status(ctx context.Context) ([]MigoMigration, error) {
 	return nil, nil
 }
 
-func UpMigrationFiles(ctx context.Context, db *gorm.DB, files []string, r *Runner) error {
-	for _, file := range files {
+func UpMigrationFiles(ctx context.Context, files []string, r *Runner) error {
+	dry, _ := ctx.Value(common.DryRunKey).(bool)
+	if len(files) == 0 {
+		log.Printf("🥂Nothing to migrate......")
+		return nil
+	}
+
+	if dry {
+		fmt.Printf("🔎 Dry run — %d migration(s) would run:\n", len(files))
+	}
+
+	for i, file := range files {
 		queryText, err := r.Tracker.ExtractUpBlock(file)
 		if err != nil {
 			return err
@@ -177,6 +194,11 @@ func UpMigrationFiles(ctx context.Context, db *gorm.DB, files []string, r *Runne
 
 		if strings.TrimSpace(queryText) == "" {
 			log.Println("⚠️ Skipping empty or no-up-block:", file)
+			continue
+		}
+
+		if dry {
+			fmt.Printf("  %2d) %s\n", i+1, queryText)
 			continue
 		}
 
@@ -195,7 +217,7 @@ func UpMigrationFiles(ctx context.Context, db *gorm.DB, files []string, r *Runne
 	return nil
 }
 
-func DownMigrationFiles(ctx context.Context, db *gorm.DB, appliedFiles []string, r *Runner) error {
+func DownMigrationFiles(ctx context.Context, appliedFiles []string, r *Runner) error {
 	for _, file := range appliedFiles {
 		queryText, err := r.Tracker.ExtractDownBlock(file)
 		if err != nil {

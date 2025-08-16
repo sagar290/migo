@@ -1,4 +1,4 @@
-package migo
+package src
 
 import (
 	"bufio"
@@ -87,7 +87,7 @@ func (t *Tracker) PrepareAppliedMigrations(ctx context.Context, db *gorm.DB) err
 func (t *Tracker) FilterNewMigrations() error {
 	var filtered []string
 	for _, file := range t.MigrationFiles {
-		if _, ok := t.AppliedMigrations[file]; ok {
+		if _, ok := t.AppliedMigrations[file]; !ok {
 			filtered = append(filtered, file)
 		}
 	}
