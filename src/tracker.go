@@ -69,8 +69,8 @@ func (t *Tracker) PrepareAppliedMigrations(ctx context.Context, db *gorm.DB) err
 		return fmt.Errorf("get last batch: %w", err)
 	}
 
-	// prepare migration files
-	results := db.WithContext(ctx).Table(t.Config.GetMigrationTable()).Select("migration").Scan(&t.AppliedMigrations)
+	// prepare Applied migration files
+	results := db.WithContext(ctx).Table(t.Config.GetMigrationTable()).Scan(&records)
 	if results.Error != nil {
 		return results.Error
 	}
