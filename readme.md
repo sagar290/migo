@@ -4,6 +4,8 @@
 
 ---
 
+![Screenshot of Migo CLI](docs/images/screenshot1.png)
+
 ## 🛠 Features
 
 - Define migrations using single-file templates with `[UP]` and `[DOWN]` blocks.
