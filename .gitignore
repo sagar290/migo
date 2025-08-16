@@ -64,3 +64,4 @@ coverage/
 vendor/
 migrations
 migo
+migo.yml
