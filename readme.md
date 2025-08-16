@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/migo.png" style="max-width: 300px" alt="Migo Fresh Demo">
+  <img src="docs/images/migo.png" style="max-width: 300px" alt="Migo a laravel style migration cli">
 </p>
 
 # Migo — Migration Tool for Go
