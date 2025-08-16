@@ -27,7 +27,16 @@ go install github.com/sagar290/migo/cmd/migo@latest
 
 Make sure `$GOPATH/bin` (or `$GOBIN`) is in your `PATH`.
 
+
+### 📥 Quick Download Example (Linux)
+```
+curl -L -o cf https://github.com/sagar290/cf/releases/latest/download/cf-linux-amd64
+chmod +x cf
+./cf --help
+```
 ### Create a migration
+
+
 
 ```bash
 migo make "create drivers table"
