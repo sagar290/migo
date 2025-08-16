@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/migo.png" style="max-width: 300px" alt="Migo Fresh Demo">
+</p>
+
 # Migo — Migration Tool for Go
 
 **Migo** is a lightweight, Go-based database migration CLI and library inspired by tools like Laravel's migration system. It helps you version your schema changes, apply migrations, rollback, and manage migration files using a clean, intuitive workflow.
