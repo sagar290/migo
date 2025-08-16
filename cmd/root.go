@@ -41,7 +41,8 @@ Examples:
   migo up --steps=1     # Run only the next migration
   migo up --dry-run     # Preview pending migrations without applying
 	`,
-	Run: UpScript,
+	Run:    UpScript,
+	PreRun: preScript,
 }
 
 var DownCommand = &cobra.Command{
@@ -50,7 +51,8 @@ var DownCommand = &cobra.Command{
 	Long: `
 Reverts the most recent migrations applied to the database. Use --steps to rollback only N migrations.
 	`,
-	Run: DownScript,
+	Run:    DownScript,
+	PreRun: preScript,
 }
 
 var RefreshCommand = &cobra.Command{
@@ -60,7 +62,8 @@ var RefreshCommand = &cobra.Command{
 Drops all applied migrations (by running Down in reverse) and then runs all Up migrations again.
 Useful in development to rebuild schema from scratch.
 	`,
-	Run: RefreshScript,
+	Run:    RefreshScript,
+	PreRun: preScript,
 }
 
 var FreshCommand = &cobra.Command{
@@ -70,7 +73,8 @@ var FreshCommand = &cobra.Command{
 Drops all database tables (except the migrations table) and applies all migrations from scratch.
 Useful to get a clean schema during development.
 	`,
-	Run: FreshScript,
+	Run:    FreshScript,
+	PreRun: preScript,
 }
 
 var MakeCommand = &cobra.Command{
@@ -79,7 +83,8 @@ var MakeCommand = &cobra.Command{
 	Long: `Generate new migration files with a timestamp prefix.
 Example:
   migo make "create table for driver"`,
-	Run: MakeScript,
+	Run:    MakeScript,
+	PreRun: preScript,
 }
 
 func Init() {
@@ -95,16 +100,18 @@ func Init() {
 	RootCmd.AddCommand(RefreshCommand)
 	RootCmd.AddCommand(FreshCommand)
 	RootCmd.AddCommand(MakeCommand)
+}
 
+func preScript(cmd *cobra.Command, args []string) {
 	config, err := src.LoadConfig()
 	if err != nil {
-		log.Println("⚠️ config error:", err)
+		log.Fatal("⚠️ config error:", err)
 		return
 	}
 
 	migoInstance, err = src.NewMigo(config, src.NewTracker(config))
 	if err != nil {
-		log.Println("⚠️ migoInstance error:", err)
+		log.Fatal("⚠️ migoInstance error:", err)
 		return
 	}
 
