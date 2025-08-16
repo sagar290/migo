@@ -189,6 +189,8 @@ func UpMigrationFiles(ctx context.Context, db *gorm.DB, files []string, r *Runne
 		if err != nil {
 			return err
 		}
+
+		log.Printf("✅ %s", file)
 	}
 	return nil
 }
