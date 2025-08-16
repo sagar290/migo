@@ -63,7 +63,8 @@ func (t *Tracker) PrepareAppliedMigrations(ctx context.Context, db *gorm.DB) err
 	var records []MigoMigration
 
 	// prepare last batch id
-	err := db.Raw(`SELECT COALESCE(MAX(batch), 0) FROM ?`, t.Config.GetMigrationTable()).Scan(&t.LastBatch).Error
+	query := fmt.Sprintf("SELECT COALESCE(MAX(batch), 0) FROM %s", t.Config.GetMigrationTable())
+	err := db.Raw(query).Scan(&t.LastBatch).Error
 	if err != nil {
 		return fmt.Errorf("get last batch: %w", err)
 	}
