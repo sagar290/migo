@@ -28,15 +28,15 @@
 ### Install
 
 ```bash
-go install github.com/sagar290/migo/cmd/migo@latest
+go install github.com/sagar290/migo@latest
 ```
 
 Make sure `$GOPATH/bin` (or `$GOBIN`) is in your `PATH`.
 
 
-### 📥 Quick Download Example (Linux)
+### 📥 Quick Download Example (Linux) [Releases](https://github.com/sagar290/migo/releases/)
 ```
-curl -L -o migo https://github.com/sagar290/migo/releases/latest/download/migo-linux-amd64
+curl -L -o migo https://github.com/sagar290/migo/releases/download/<version_number>/migo-darwin-amd64
 chmod +x migo
 ./migo --help
 ```
