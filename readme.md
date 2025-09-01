@@ -89,7 +89,7 @@ migo down
 migo refresh
 ```
 
-Rolls back and re-applies migrations in one command. Use flags for safety (`--dry-run`, `--force`, etc.).
+Rolls back and re-applies migrations in one command. Use flags for safety (`--dry-run`).
 
 ### Fresh start (drop everything)
 
@@ -97,7 +97,7 @@ Rolls back and re-applies migrations in one command. Use flags for safety (`--dr
 migo fresh
 ```
 
-Drops all tables (except migrations history), then re-runs all migrations. Use with caution; supports `--dry-run`, `--seed`, `--force`.
+Drops all tables (except migrations history), then re-runs all migrations. Use with caution; supports `--dry-run`.
 
 ---
 
