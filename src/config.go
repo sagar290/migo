@@ -16,12 +16,23 @@ type Config struct {
 	MigrationTable string `mapstructure:"migration_table"`
 }
 
-func LoadConfig() (*Config, error) {
+func LoadConfig(configFile string) (*Config, error) {
 
+	if configFile == "" {
+		return nil, fmt.Errorf("no config file found")
+	}
+
+	parts := strings.Split(configFile, ".")
+
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid config file format")
+	}
+
+	fmt.Println(parts)
 	v := viper.New()
 
-	v.SetConfigName("migo")
-	v.SetConfigType("yaml")
+	v.SetConfigName(parts[0])
+	v.SetConfigType(parts[1])
 	v.AddConfigPath(".")
 
 	v.AutomaticEnv()

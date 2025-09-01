@@ -81,6 +81,7 @@ migo down
 - By default rolls back the last batch.
 - Use `--steps=1` to rollback only one migration.
 - Supports `--dry-run`.
+- Load custom yaml file like `migo up -f config.yml`
 
 ### Refresh the database
 

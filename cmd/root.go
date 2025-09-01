@@ -6,6 +6,7 @@ import (
 	"log"
 )
 
+var configFile string
 var migoInstance src.Migrator
 var configInstance *src.Config
 
@@ -100,10 +101,13 @@ func Init() {
 	RootCmd.AddCommand(RefreshCommand)
 	RootCmd.AddCommand(FreshCommand)
 	RootCmd.AddCommand(MakeCommand)
+
+	RootCmd.PersistentFlags().StringVarP(&configFile, "file", "f", "migo.yaml", "Path to config file")
 }
 
 func preScript(cmd *cobra.Command, args []string) {
-	config, err := src.LoadConfig()
+
+	config, err := src.LoadConfig(configFile)
 	if err != nil {
 		log.Fatal("⚠️ config error:", err)
 		return
