@@ -1,4 +1,4 @@
-# Contributing to [Your Project Name]
+# Contributing to Migo
 
 Thank you for your interest in contributing to **Migo**! We welcome contributions of all kinds, from code and documentation to bug reports and feature requests. Following these guidelines helps ensure a smooth process for everyone involved.
 
